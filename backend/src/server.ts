@@ -18,7 +18,7 @@ const app = express();
 app.set("trust proxy", 1);
 app.use(express.json());
 app.use(cors({
-    origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+    origin: ['http://localhost:3000', 'http://127.0.0.1:3000', 'https://web2lab2security.onrender.com'],
     credentials: true, // cookie ne prolazi inace sa sid
     preflightContinue: false,
     methods: ['GET', 'POST', 'PUT', 'PATCH' , 'DELETE', 'OPTIONS'],
