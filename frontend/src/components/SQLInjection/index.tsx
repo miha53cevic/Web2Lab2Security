@@ -43,7 +43,7 @@ function SQLInjection() {
                 }
 
                 // Posalji zahtjev sa ranjivosti omogucenom
-                const url = values.ranjivost ? 'http://localhost:3001/film' : 'http://localhost:3001/secure/film';
+                const url = values.ranjivost ? `${import.meta.env.VITE_BACKEND_URL}/film` : `${import.meta.env.VITE_BACKEND_URL}/secure/film`;
                 try {
                     const res = await axios.get(url, {
                         params: { nazivFilma: values.nazivFilma }
@@ -63,7 +63,10 @@ function SQLInjection() {
                         nešto sličnog tjekom upita se ne vraćaju korisniku informacije o grešci već samo informacija da traženi film nije pronađen.
                         <br/> U slučaju da ranjivost je uključena u sql upit se direktno stavlja unos korisnika (stavlja se unos unutar stringa).
                         Osim toga također se ispisuju pogreške o upitu koje vraća baza podataka (mogu se izvoditi ilegalni upiti i sljepo napadanje). Još dodatno je implementirana
-                        i regex provjera na klijentu koja se može uključiti opcijom.
+                        i regex provjera na klijentu koja se može uključiti opcijom.<br/>
+                        <br/>Naredbe za isprobat: <code>'-- (radi jer je upit oblika LIKE '%parametar%' pa ako se stavi '-- ispada LIKE '%'--' što uvjek vrijedi)</code><br/>
+                        <code>'ORDER BY 1-- (može se saznati da se koriste 3 atributa u naredbi, ORDER BY 4 vraća grešku)</code><br/>
+                        <code>'UNION SELECT table_name, NULL, NULL FROM information_schema.tables-- (ispisuju se podaci o bazi)</code>
                     </p>
                     <Card>
                         <Card.Header>
