@@ -20,13 +20,13 @@ app.use(express.json());
 app.use(cors({
     origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
     credentials: true, // cookie ne prolazi inace sa sid
-    preflightContinue: true,
+    preflightContinue: false,
     methods: ['GET', 'POST', 'PUT', 'PATCH' , 'DELETE', 'OPTIONS'],
 }));
 
 app.use(session({
     name: 'sitedata',
-    secret: 'the secret to rule all secrets!',
+    secret: process.env.SESSION_SECRET!,
     resave: false, 
     saveUninitialized: false,  
     cookie: {
@@ -50,6 +50,7 @@ app.get('/film', async (req, res) => {
     if (!nazivFilma)
         return res.status(422).send({ error: "nazivFilma nije zadan!" });
 
+    // Pronađi filmove sličnog naziva
     try {
         const parametar = (nazivFilma as string).toLocaleLowerCase();
         const result = await pool.query(`SELECT nazivFilma, redatelj, slikaUrl FROM filmovi WHERE LOWER(nazivFilma) LIKE '%${parametar}%'`);
@@ -67,6 +68,7 @@ app.get('/secure/film', async (req, res) => {
     if (!nazivFilma)
         return res.status(422).send({ error: "nazivFilma nije zadan!" });
 
+    // Pronađi filmove sličnog naziva
     try {
         const parametar = (nazivFilma as string).toLocaleLowerCase();
         const result = await pool.query(`SELECT nazivFilma, redatelj, slikaUrl FROM filmovi WHERE LOWER(nazivFilma) LIKE ('%' || $1 || '%')`, [parametar]);
@@ -82,29 +84,47 @@ app.get('/secure/film', async (req, res) => {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Broken Authentication
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Usersi koji postoje u "bazi"
-const users = [
-    { username: "Bob" },
-    { username: "User" },
-    { username: "Mihael" },
-];
+app.post('/login', async (req, res) => {
+    const { username, password } = req.body;
 
-app.post('/login', (req, res) => {
-    const data = req.body;
+    if (!username || !password)
+        return res.status(422).send({ error: "Missing username or password property on body!" });
 
-    if (!data || !data.username)
-        return res.status(422).send({ error: "Missing username property on body!" });
-
-    // Check if user exists
-    if (!users.some(user => user.username === data.username))
-        return res.sendStatus(401);
-
-    req.session.username = data.username;    // create session
-    return res.sendStatus(200);
+    // Je li Auth ispravan odnosno je li korisnik taj postoji s tom lozinkom
+    try {
+        // Šaljemo grešku o tome je li username ili password kriv
+        const result = await pool.query(`SELECT username FROM korisnici WHERE password = $1`, [password]);
+        if (!result.rowCount) return res.status(404).send({ error: 'Incorrect password' });
+        if (username !== result.rows[0].username) return res.status(404).send({ error: 'Incorrect Username' });
+        req.session.username = result.rows[0].username;
+        return res.status(200).send({ username: req.session.username });
+    } catch(err) {
+        console.error(err);
+        return res.status(500).send({ error: JSON.stringify(err) });
+    }
 });
 
+app.post('/secure/login', async (req, res) => {
+    const { username, password } = req.body;
+
+    if (!username || !password)
+        return res.status(422).send({ error: "Missing username or password property on body!" });
+
+    // Je li Auth ispravan odnosno je li korisnik taj postoji s tom lozinkom
+    try {
+        const result = await pool.query(`SELECT username FROM korisnici WHERE username = $1 AND password = $2`, [username, password]);
+        if (!result.rowCount) return res.status(404).send({ error: 'User not found' }); // šaljemo generičku poruku koja ne daje previše informacija o tome je li username ili password krivi
+        req.session.username = result.rows[0].username;
+        return res.status(200).send({ username: req.session.username });
+    } catch(err) {
+        console.error(err);
+        return res.status(500).send({ error: JSON.stringify(err) });
+    }
+});
+
+// Ako je korisnik logiran vrati podatke o njemu, služi za frontend da provjeri ako je korisnik logiran pri refreshu
 app.get('/user', (req, res) => {
-    if (!req.session.username)
+    if (!req.session.username) 
         return res.status(401).send({ error: "Not logged in!" });
     else return res.send({ username: req.session.username });
 });
@@ -116,7 +136,7 @@ app.get('/logout', (req, res) => {
     } else {
         req.session.destroy((err) => {
             console.log(err);
-            res.sendStatus(200);
+            res.clearCookie('sitedata').sendStatus(200);
         })
     };
 });

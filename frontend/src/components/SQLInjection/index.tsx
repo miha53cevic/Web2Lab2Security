@@ -52,7 +52,7 @@ function SQLInjection() {
                     setError(undefined);
                 } catch (err) {
                     setFilms(null);
-                    setError(JSON.stringify((err as AxiosError).response?.data));
+                    setError(JSON.stringify((err as AxiosError).response?.data)); // ispiši pogreške
                 }
             }}
         >

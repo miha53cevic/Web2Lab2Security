@@ -4,7 +4,6 @@ import SQLInjection from './components/SQLInjection';
 import BrokenAuth from "./components/BrokenAuth";
 
 function App() {
-
     return (
         <main>
             <Navbar bg='info' className='rounded'>
@@ -21,6 +20,7 @@ function App() {
                 <br /><br />
                 <BrokenAuth />
             </Container>
+            <br/>
         </main >
     );
 }

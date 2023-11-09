@@ -12,3 +12,11 @@ INSERT INTO filmovi VALUES ('Spider-Man 3', 'Sam Raimi', 'https://upload.wikimed
 INSERT INTO filmovi VALUES ('Batman Begins', 'Christopher Nolan', 'https://upload.wikimedia.org/wikipedia/en/thumb/a/af/Batman_Begins_Poster.jpg/220px-Batman_Begins_Poster.jpg');
 INSERT INTO filmovi VALUES ('The Dark Knight', 'Christopher Nolan', 'https://upload.wikimedia.org/wikipedia/en/1/1c/The_Dark_Knight_%282008_film%29.jpg');
 INSERT INTO filmovi VALUES ('The Dark Knight Rises', 'Christopher Nolan', 'https://upload.wikimedia.org/wikipedia/en/8/83/Dark_knight_rises_poster.jpg');
+
+CREATE TABLE korisnici (
+    username TEXT NOT NULL PRIMARY KEY,
+    password TEXT NOT NULL
+);
+
+INSERT INTO korisnici VALUES ('test', 'password123');
+INSERT INTO korisnici VALUES ('mihael', 'Radijator12');
