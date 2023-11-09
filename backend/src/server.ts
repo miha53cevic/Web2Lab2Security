@@ -1,16 +1,28 @@
 import express from 'express';
 import session from 'express-session';
-import 'dotenv/config';
 import { Pool } from 'pg';
+import cors from 'cors';
+import 'dotenv/config';
 
 const pool = new Pool({
-    connectionString:
+    connectionString: process.env.DB_CONNECTION,
+    ssl: (process.env.NODE_ENV === 'development') ? false
+        : {
+            rejectUnauthorized: false,
+        }
 });
 
 const app = express();
 
+// za heroku je trebal valjda i za render onda
 app.set("trust proxy", 1);
 app.use(express.json());
+app.use(cors({
+    origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+    credentials: true, // cookie ne prolazi inace sa sid
+    preflightContinue: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH' , 'DELETE', 'OPTIONS'],
+}));
 
 app.use(session({
     name: 'sitedata',
@@ -24,25 +36,58 @@ app.use(session({
     }
 }));
 
+// Index odnosno default ruta
 app.get('/', (req, res) => {
     res.send(`<h1>Running on port: ${port}</h1>`);
 });
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// SQL Injection
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+app.get('/film', async (req, res) => {
+    const { nazivFilma } = req.query;
+
+    if (!nazivFilma)
+        return res.status(422).send({ error: "nazivFilma nije zadan!" });
+
+    try {
+        const parametar = (nazivFilma as string).toLocaleLowerCase();
+        const result = await pool.query(`SELECT nazivFilma, redatelj, slikaUrl FROM filmovi WHERE LOWER(nazivFilma) LIKE '%${parametar}%'`);
+        return res.status(200).send(result.rows);
+    } catch(err) {
+        // Nesigurna verzija vraca i javlja greske korisniku
+        console.error(err);
+        return res.status(500).send({ error: JSON.stringify(err) });
+    } 
+});
+
+app.get('/secure/film', async (req, res) => {
+    const { nazivFilma } = req.query;
+
+    if (!nazivFilma)
+        return res.status(422).send({ error: "nazivFilma nije zadan!" });
+
+    try {
+        const parametar = (nazivFilma as string).toLocaleLowerCase();
+        const result = await pool.query(`SELECT nazivFilma, redatelj, slikaUrl FROM filmovi WHERE LOWER(nazivFilma) LIKE ('%' || $1 || '%')`, [parametar]);
+        return res.status(200).send(result.rows);
+    } catch(err) {
+        // Od razlike od nesigurnog nacina ako se dogodi greska samo vrati da nisi pronasao taj film
+        console.error(err);
+        return res.status(200).send([]);
+    } 
+});
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Broken Authentication
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Usersi koji postoje u "bazi"
 const users = [
     { username: "Bob" },
     { username: "User" },
     { username: "Mihael" },
 ];
-
-app.post('/film', (req, res) => {
-    const nazivFilma = req.query;
-
-    if (!nazivFilma)
-        return res.status(422).send({ error: "nazivFilma nije zadan!" });
-
-    
-});
 
 app.post('/login', (req, res) => {
     const data = req.body;
@@ -75,12 +120,12 @@ app.get('/logout', (req, res) => {
         })
     };
 });
+/////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Default route (404 not found)
 app.use((req, res) => {
     res.sendStatus(404);
 })
-
 
 const port = process.env.PORT || 3001;
 app.listen(port, () => {
